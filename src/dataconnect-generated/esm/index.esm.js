@@ -22,6 +22,18 @@ export function createTask(dcOrVars, vars) {
   return executeMutation(createTaskRef(dcInstance, inputVars));
 }
 
+export const updateTaskRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpdateTask', inputVars);
+}
+updateTaskRef.operationName = 'UpdateTask';
+
+export function updateTask(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(updateTaskRef(dcInstance, inputVars));
+}
+
 export const toggleTaskRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();

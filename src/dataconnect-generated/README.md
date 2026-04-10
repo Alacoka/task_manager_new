@@ -13,6 +13,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*ListUserTasks*](#listusertasks)
 - [**Mutations**](#mutations)
   - [*CreateTask*](#createtask)
+  - [*UpdateTask*](#updatetask)
   - [*ToggleTask*](#toggletask)
   - [*DeleteTask*](#deletetask)
 
@@ -109,6 +110,8 @@ export interface ListUserTasksData {
     title: string;
     completed: boolean;
     createdAt: TimestampString;
+    dueDate?: DateString | null;
+    category?: string | null;
   } & Task_Key)[];
 }
 ```
@@ -226,6 +229,8 @@ The `CreateTask` mutation requires an argument of type `CreateTaskVariables`, wh
 export interface CreateTaskVariables {
   title: string;
   userId: string;
+  category?: string | null;
+  dueDate?: DateString | null;
 }
 ```
 ### Return Type
@@ -247,13 +252,15 @@ import { connectorConfig, createTask, CreateTaskVariables } from '@dataconnect/g
 const createTaskVars: CreateTaskVariables = {
   title: ..., 
   userId: ..., 
+  category: ..., // optional
+  dueDate: ..., // optional
 };
 
 // Call the `createTask()` function to execute the mutation.
 // You can use the `await` keyword to wait for the promise to resolve.
 const { data } = await createTask(createTaskVars);
 // Variables can be defined inline as well.
-const { data } = await createTask({ title: ..., userId: ..., });
+const { data } = await createTask({ title: ..., userId: ..., category: ..., dueDate: ..., });
 
 // You can also pass in a `DataConnect` instance to the action shortcut function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -278,12 +285,14 @@ import { connectorConfig, createTaskRef, CreateTaskVariables } from '@dataconnec
 const createTaskVars: CreateTaskVariables = {
   title: ..., 
   userId: ..., 
+  category: ..., // optional
+  dueDate: ..., // optional
 };
 
 // Call the `createTaskRef()` function to get a reference to the mutation.
 const ref = createTaskRef(createTaskVars);
 // Variables can be defined inline as well.
-const ref = createTaskRef({ title: ..., userId: ..., });
+const ref = createTaskRef({ title: ..., userId: ..., category: ..., dueDate: ..., });
 
 // You can also pass in a `DataConnect` instance to the `MutationRef` function.
 const dataConnect = getDataConnect(connectorConfig);
@@ -299,6 +308,124 @@ console.log(data.task_insert);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.task_insert);
+});
+```
+
+## UpdateTask
+You can execute the `UpdateTask` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-generated/index.d.ts](./index.d.ts):
+```typescript
+updateTask(vars: UpdateTaskVariables): MutationPromise<UpdateTaskData, UpdateTaskVariables>;
+
+interface UpdateTaskRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateTaskVariables): MutationRef<UpdateTaskData, UpdateTaskVariables>;
+}
+export const updateTaskRef: UpdateTaskRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+updateTask(dc: DataConnect, vars: UpdateTaskVariables): MutationPromise<UpdateTaskData, UpdateTaskVariables>;
+
+interface UpdateTaskRef {
+  ...
+  (dc: DataConnect, vars: UpdateTaskVariables): MutationRef<UpdateTaskData, UpdateTaskVariables>;
+}
+export const updateTaskRef: UpdateTaskRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the updateTaskRef:
+```typescript
+const name = updateTaskRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpdateTask` mutation requires an argument of type `UpdateTaskVariables`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpdateTaskVariables {
+  id: UUIDString;
+  title?: string | null;
+  category?: string | null;
+  dueDate?: DateString | null;
+}
+```
+### Return Type
+Recall that executing the `UpdateTask` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpdateTaskData`, which is defined in [dataconnect-generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpdateTaskData {
+  task_update?: Task_Key | null;
+}
+```
+### Using `UpdateTask`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, updateTask, UpdateTaskVariables } from '@dataconnect/generated';
+
+// The `UpdateTask` mutation requires an argument of type `UpdateTaskVariables`:
+const updateTaskVars: UpdateTaskVariables = {
+  id: ..., 
+  title: ..., // optional
+  category: ..., // optional
+  dueDate: ..., // optional
+};
+
+// Call the `updateTask()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await updateTask(updateTaskVars);
+// Variables can be defined inline as well.
+const { data } = await updateTask({ id: ..., title: ..., category: ..., dueDate: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await updateTask(dataConnect, updateTaskVars);
+
+console.log(data.task_update);
+
+// Or, you can use the `Promise` API.
+updateTask(updateTaskVars).then((response) => {
+  const data = response.data;
+  console.log(data.task_update);
+});
+```
+
+### Using `UpdateTask`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, updateTaskRef, UpdateTaskVariables } from '@dataconnect/generated';
+
+// The `UpdateTask` mutation requires an argument of type `UpdateTaskVariables`:
+const updateTaskVars: UpdateTaskVariables = {
+  id: ..., 
+  title: ..., // optional
+  category: ..., // optional
+  dueDate: ..., // optional
+};
+
+// Call the `updateTaskRef()` function to get a reference to the mutation.
+const ref = updateTaskRef(updateTaskVars);
+// Variables can be defined inline as well.
+const ref = updateTaskRef({ id: ..., title: ..., category: ..., dueDate: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = updateTaskRef(dataConnect, updateTaskVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.task_update);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.task_update);
 });
 ```
 

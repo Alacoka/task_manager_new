@@ -1,15 +1,26 @@
-# dataconnect/mutations.gql
-
-# Cria uma nova tarefa atrelada ao UID do utilizador
-mutation CreateTask($title: String!, $userId: String!) @auth(level: USER) {
+# Criar tarefa agora aceita categoria e prazo (opcionais)
+mutation CreateTask($title: String!, $userId: String!, $category: String, $dueDate: Date) @auth(level: USER) {
   task_insert(data: {
     title: $title,
-    userId: $userId
-    # completed já é false por defeito no schema
+    userId: $userId,
+    category: $category,
+    dueDate: $dueDate
   })
 }
 
-# Atualiza o estado da tarefa (concluída / não concluída)
+# NOVA MUTAÇÃO: Para editar uma tarefa que já existe
+mutation UpdateTask($id: UUID!, $title: String, $category: String, $dueDate: Date) @auth(level: USER) {
+  task_update(
+    id: $id, 
+    data: { 
+      title: $title,
+      category: $category,
+      dueDate: $dueDate
+    }
+  )
+}
+
+# (Mantenha o ToggleTask e DeleteTask que já estavam aí)
 mutation ToggleTask($id: UUID!, $completed: Boolean!) @auth(level: USER) {
   task_update(
     id: $id, 
@@ -17,7 +28,6 @@ mutation ToggleTask($id: UUID!, $completed: Boolean!) @auth(level: USER) {
   )
 }
 
-# Apaga a tarefa do banco de dados
 mutation DeleteTask($id: UUID!) @auth(level: USER) {
   task_delete(id: $id)
 }

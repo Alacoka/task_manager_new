@@ -18,6 +18,8 @@ export interface CreateTaskData {
 export interface CreateTaskVariables {
   title: string;
   userId: string;
+  category?: string | null;
+  dueDate?: DateString | null;
 }
 
 export interface DeleteTaskData {
@@ -34,6 +36,8 @@ export interface ListUserTasksData {
     title: string;
     completed: boolean;
     createdAt: TimestampString;
+    dueDate?: DateString | null;
+    category?: string | null;
   } & Task_Key)[];
 }
 
@@ -55,6 +59,17 @@ export interface ToggleTaskVariables {
   completed: boolean;
 }
 
+export interface UpdateTaskData {
+  task_update?: Task_Key | null;
+}
+
+export interface UpdateTaskVariables {
+  id: UUIDString;
+  title?: string | null;
+  category?: string | null;
+  dueDate?: DateString | null;
+}
+
 interface CreateTaskRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: CreateTaskVariables): MutationRef<CreateTaskData, CreateTaskVariables>;
@@ -66,6 +81,18 @@ export const createTaskRef: CreateTaskRef;
 
 export function createTask(vars: CreateTaskVariables): MutationPromise<CreateTaskData, CreateTaskVariables>;
 export function createTask(dc: DataConnect, vars: CreateTaskVariables): MutationPromise<CreateTaskData, CreateTaskVariables>;
+
+interface UpdateTaskRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpdateTaskVariables): MutationRef<UpdateTaskData, UpdateTaskVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpdateTaskVariables): MutationRef<UpdateTaskData, UpdateTaskVariables>;
+  operationName: string;
+}
+export const updateTaskRef: UpdateTaskRef;
+
+export function updateTask(vars: UpdateTaskVariables): MutationPromise<UpdateTaskData, UpdateTaskVariables>;
+export function updateTask(dc: DataConnect, vars: UpdateTaskVariables): MutationPromise<UpdateTaskData, UpdateTaskVariables>;
 
 interface ToggleTaskRef {
   /* Allow users to create refs without passing in DataConnect */

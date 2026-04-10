@@ -1,6 +1,3 @@
-# dataconnect/queries.gql
-
-# Lista todas as tarefas de um utilizador específico, da mais recente para a mais antiga
 query ListUserTasks($userId: String!) @auth(level: USER) {
   tasks(
     where: { userId: { eq: $userId } }
@@ -10,5 +7,7 @@ query ListUserTasks($userId: String!) @auth(level: USER) {
     title
     completed
     createdAt
+    dueDate
+    category
   }
 }

@@ -4,4 +4,8 @@ type Task @table {
   completed: Boolean! @default(value: false)
   userId: String!
   createdAt: Timestamp! @default(expr: "request.time")
+  
+  # Nossas novas colunas:
+  dueDate: Date
+  category: String
 }

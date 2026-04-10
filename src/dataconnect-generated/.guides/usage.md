@@ -12,10 +12,12 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useCreateTask, useToggleTask, useDeleteTask, useListUserTasks } from '@dataconnect/generated/react';
+import { useCreateTask, useUpdateTask, useToggleTask, useDeleteTask, useListUserTasks } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
 
 const { data, isPending, isSuccess, isError, error } = useCreateTask(createTaskVars);
+
+const { data, isPending, isSuccess, isError, error } = useUpdateTask(updateTaskVars);
 
 const { data, isPending, isSuccess, isError, error } = useToggleTask(toggleTaskVars);
 
@@ -60,11 +62,14 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { createTask, toggleTask, deleteTask, listUserTasks } from '@dataconnect/generated';
+import { createTask, updateTask, toggleTask, deleteTask, listUserTasks } from '@dataconnect/generated';
 
 
 // Operation CreateTask:  For variables, look at type CreateTaskVars in ../index.d.ts
 const { data } = await CreateTask(dataConnect, createTaskVars);
+
+// Operation UpdateTask:  For variables, look at type UpdateTaskVars in ../index.d.ts
+const { data } = await UpdateTask(dataConnect, updateTaskVars);
 
 // Operation ToggleTask:  For variables, look at type ToggleTaskVars in ../index.d.ts
 const { data } = await ToggleTask(dataConnect, toggleTaskVars);
