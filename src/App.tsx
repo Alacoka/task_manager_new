@@ -1,286 +1,248 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Trash2, CheckCircle, Circle, Calendar, AlertCircle, Sun, Moon } from 'lucide-react';
-import Cookies from 'js-cookie';
+import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { Auth, googleProvider } from '../lib/firebase';
+
+// IMPORTANTE: Ajuste este caminho consoante a pasta onde o SDK foi gerado!
+// Geralmente fica na raiz do projeto ou dentro de src.
+import {
+  listUserTasks,
+  createTask,
+  toggleTask,
+  deleteTask
+} from '../dataconnect-generated/js/default-connector';
 
 interface Task {
   id: string;
-  text: string;
+  title: string;
   completed: boolean;
-  category: string;
-  priority: 'baixa' | 'média' | 'alta';
-  dueDate: string;
-  createdAt: string;
+  createdAt?: any;
 }
 
-const CATEGORIES = [
-  'Pessoal',
-  'Trabalho',
-  'Estudos',
-  'Compras',
-  'Saúde',
-  'Casa',
-  'Outros'
-];
-
-const PRIORITIES = {
-  baixa: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  média: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  alta: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-};
-
 function App() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [newTask, setNewTask] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Pessoal');
-  const [selectedPriority, setSelectedPriority] = useState<Task['priority']>('média');
-  const [dueDate, setDueDate] = useState('');
-  const [filter, setFilter] = useState<'todas' | 'pendentes' | 'concluídas'>('todas');
-  const [categoryFilter, setCategoryFilter] = useState<string>('todas');
-  const [darkMode, setDarkMode] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load tasks and theme from cookies on component mount
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+
+  // 1. Gerir a Autenticação
   useEffect(() => {
-    const savedTasks = Cookies.get('tasks');
-    const savedTheme = Cookies.get('darkMode');
-    
-    if (savedTasks) {
-      setTasks(JSON.parse(savedTasks));
-    }
-    
-    if (savedTheme) {
-      setDarkMode(savedTheme === 'true');
-    }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Save tasks to cookies whenever they change
+  // 2. Carregar as tarefas sempre que o utilizador mudar
   useEffect(() => {
-    Cookies.set('tasks', JSON.stringify(tasks), { expires: 365 });
-  }, [tasks]);
-
-  // Update theme and save to cookies
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
+    if (user) {
+      fetchTasks();
     } else {
-      document.documentElement.classList.remove('dark');
+      setTasks([]); // Limpa as tarefas se o utilizador fizer logout
     }
-    Cookies.set('darkMode', darkMode.toString(), { expires: 365 });
-  }, [darkMode]);
+  }, [user]);
 
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Erro ao fazer login com Google:", error);
+    }
   };
 
-  const addTask = (e: React.FormEvent) => {
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+    }
+  };
+
+  // --- LÓGICA DA BASE DE DADOS (Firebase Data Connect) ---
+
+  const fetchTasks = async () => {
+    if (!user) return;
+    setIsLoadingTasks(true);
+    try {
+      // Chama a Query que criámos no queries.gql
+      const response = await listUserTasks({ userId: user.uid });
+      setTasks(response.data.tasks);
+    } catch (error) {
+      console.error("Erro ao procurar tarefas:", error);
+    } finally {
+      setIsLoadingTasks(false);
+    }
+  };
+
+  const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTask.trim()) return;
-    
-    const task: Task = {
-      id: Date.now().toString(),
-      text: newTask.trim(),
-      completed: false,
-      category: selectedCategory,
-      priority: selectedPriority,
-      dueDate: dueDate,
-      createdAt: new Date().toISOString()
-    };
-    
-    setTasks([...tasks, task]);
-    setNewTask('');
-    setDueDate('');
-  };
+    if (!newTaskTitle.trim() || !user) return;
 
-  const toggleTask = (id: string) => {
-    setTasks(tasks.map(task =>
-      task.id === id ? { ...task, completed: !task.completed } : task
-    ));
-  };
+    try {
+      // Chama a Mutation para criar a tarefa
+      await createTask({
+        title: newTaskTitle,
+        userId: user.uid
+      });
 
-  const deleteTask = (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta tarefa?')) {
-      setTasks(tasks.filter(task => task.id !== id));
+      setNewTaskTitle(''); // Limpa o input
+      fetchTasks(); // Atualiza a lista para mostrar a nova tarefa
+    } catch (error) {
+      console.error("Erro ao adicionar tarefa:", error);
     }
   };
 
-  const filteredTasks = tasks
-    .filter(task => {
-      if (filter === 'pendentes') return !task.completed;
-      if (filter === 'concluídas') return task.completed;
-      return true;
-    })
-    .filter(task => {
-      if (categoryFilter === 'todas') return true;
-      return task.category === categoryFilter;
-    })
-    .sort((a, b) => {
-      // Sort by priority (alta > média > baixa)
-      const priorityOrder = { alta: 3, média: 2, baixa: 1 };
-      const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
-      if (priorityDiff !== 0) return priorityDiff;
-      
-      // Then by due date if both have one
-      if (a.dueDate && b.dueDate) {
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-      }
-      return 0;
-    });
+  const handleToggleTask = async (id: string, currentStatus: boolean) => {
+    try {
+      // Otimista: atualiza o ecrã primeiro para parecer mais rápido
+      setTasks(tasks.map(t => t.id === id ? { ...t, completed: !currentStatus } : t));
 
-  const isTaskOverdue = (dueDate: string) => {
-    if (!dueDate) return false;
-    return new Date(dueDate) < new Date();
+      // Chama a Mutation no background
+      await toggleTask({ id, completed: !currentStatus });
+    } catch (error) {
+      console.error("Erro ao atualizar tarefa:", error);
+      fetchTasks(); // Em caso de erro, reverte para o estado da base de dados
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+  const handleDeleteTask = async (id: string) => {
+    try {
+      // Otimista: remove do ecrã primeiro
+      setTasks(tasks.filter(t => t.id !== id));
+
+      // Chama a Mutation para apagar
+      await deleteTask({ id });
+    } catch (error) {
+      console.error("Erro ao apagar tarefa:", error);
+      fetchTasks(); // Reverte em caso de erro
+    }
   };
+
+  // --- INTERFACE (Manteve-se igual, apenas ligada às novas funções) ---
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center font-medium text-slate-500">A carregar o TaskFlow...</div>;
+  }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8 px-4 transition-colors duration-200`}>
-      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transition-colors duration-200">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Gerenciador de Tarefas</h1>
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
-            >
-              {darkMode ? <Sun size={24} /> : <Moon size={24} />}
-            </button>
-          </div>
-          
-          <form onSubmit={addTask} className="mb-8 space-y-4">
-            <div className="flex gap-4 flex-wrap">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 text-slate-800">
+
+      {/* TELA DE LOGIN */}
+      {!user ? (
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center w-full max-w-sm">
+          <h1 className="text-3xl font-bold mb-6 text-slate-800">TaskFlow</h1>
+          <button
+            onClick={handleLogin}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+              <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+            Entrar com Google
+          </button>
+        </div>
+      ) : (
+
+        /* APLICATIVO PRINCIPAL */
+        <div className="w-full max-w-3xl h-[85vh] flex flex-col gap-6">
+
+          {/* Header */}
+          <header className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 shrink-0">
+            <h1 className="text-2xl font-bold">TaskFlow</h1>
+            <div className="flex items-center gap-4">
+              <img
+                src={user.photoURL || ''}
+                alt="Perfil"
+                className="w-8 h-8 rounded-full border border-slate-300"
+              />
+              <span className="font-medium hidden sm:block">
+                {user.displayName}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="bg-red-50 hover:bg-red-100 text-red-600 font-medium py-1.5 px-4 rounded-lg transition-colors"
+              >
+                Sair
+              </button>
+            </div>
+          </header>
+
+          {/* Área Principal */}
+          <main className="flex-1 bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+            <h2 className="text-xl font-semibold mb-6">Suas Tarefas</h2>
+
+            {/* Input de nova tarefa */}
+            <form onSubmit={handleAddTask} className="flex gap-3 mb-6 shrink-0">
               <input
                 type="text"
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                placeholder="Adicionar nova tarefa..."
-                className="flex-1 min-w-[300px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-              />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                {CATEGORIES.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-              <select
-                value={selectedPriority}
-                onChange={(e) => setSelectedPriority(e.target.value as Task['priority'])}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="baixa">Prioridade Baixa</option>
-                <option value="média">Prioridade Média</option>
-                <option value="alta">Prioridade Alta</option>
-              </select>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder="O que precisa de ser feito hoje?"
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
               />
               <button
                 type="submit"
-                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors duration-200 flex items-center gap-2"
+                disabled={!newTaskTitle.trim()}
+                className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium px-6 py-3 rounded-lg transition-colors"
               >
-                <PlusCircle size={20} />
-                <span>Adicionar</span>
+                Adicionar
               </button>
-            </div>
-          </form>
+            </form>
 
-          <div className="flex gap-4 mb-6 flex-wrap">
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as typeof filter)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="todas">Todas as Tarefas</option>
-              <option value="pendentes">Pendentes</option>
-              <option value="concluídas">Concluídas</option>
-            </select>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="todas">Todas as Categorias</option>
-              {CATEGORIES.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-3">
-            {filteredTasks.map(task => (
-              <div
-                key={task.id}
-                className={`flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 ${
-                  task.completed ? 'opacity-75' : ''
-                }`}
-              >
-                <div className="flex items-center gap-4 flex-1">
-                  <button
-                    onClick={() => toggleTask(task.id)}
-                    className="text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-200"
-                  >
-                    {task.completed ? (
-                      <CheckCircle className="text-purple-600 dark:text-purple-400" size={24} />
-                    ) : (
-                      <Circle size={24} />
-                    )}
-                  </button>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`${task.completed ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200'} font-medium`}>
-                        {task.text}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${PRIORITIES[task.priority]}`}>
-                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                      </span>
-                      <span className="bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-2 py-1 rounded-full text-xs font-medium">
-                        {task.category}
-                      </span>
-                    </div>
-                    {task.dueDate && (
-                      <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        <Calendar size={14} />
-                        <span className={isTaskOverdue(task.dueDate) ? 'text-red-500 dark:text-red-400 font-medium' : ''}>
-                          {formatDate(task.dueDate)}
-                          {isTaskOverdue(task.dueDate) && !task.completed && (
-                            <span className="ml-2 inline-flex items-center">
-                              <AlertCircle size={14} className="text-red-500 dark:text-red-400" />
-                              <span className="ml-1">Atrasada</span>
-                            </span>
-                          )}
+            {/* Listagem */}
+            <div className="flex-1 overflow-y-auto pr-2">
+              {isLoadingTasks ? (
+                <div className="flex justify-center py-10 text-slate-400">A carregar tarefas...</div>
+              ) : tasks.length === 0 ? (
+                // Ecrã vazio
+                <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                  <svg className="w-16 h-16 mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                  </svg>
+                  <p>Nenhuma tarefa por aqui. Aproveite o dia!</p>
+                </div>
+              ) : (
+                // Lista preenchida
+                <ul className="space-y-3">
+                  {tasks.map(task => (
+                    <li
+                      key={task.id}
+                      className={`flex items-center justify-between p-4 border rounded-lg transition-all group ${task.completed ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="checkbox"
+                          checked={task.completed}
+                          onChange={() => handleToggleTask(task.id, task.completed)}
+                          className="w-5 h-5 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                        />
+                        <span className={`text-lg transition-all ${task.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                          {task.title}
                         </span>
                       </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 mr-4">
-                    Criada em {formatDate(task.createdAt)}
-                  </span>
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {filteredTasks.length === 0 && (
-              <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-                Nenhuma tarefa encontrada
-              </p>
-            )}
-          </div>
+                      <button
+                        onClick={() => handleDeleteTask(task.id)}
+                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-2"
+                        title="Apagar tarefa"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+          </main>
         </div>
-      </div>
+      )}
     </div>
   );
 }

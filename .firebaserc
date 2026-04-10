@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "task-manager-8e76b"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

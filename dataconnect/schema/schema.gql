@@ -1,41 +1,7 @@
-type User @table {
-  displayName: String!
-  email: String!
-  createdAt: Timestamp!
-  photoUrl: String
-}
-
-type Project @table {
-  creator: User!
-  name: String!
-  createdAt: Timestamp!
-  description: String
-  dueDate: Date
-}
-
 type Task @table {
-  assignee: User
-  project: Project
+  id: UUID! @default(expr: "uuidV4()")
   title: String!
-  status: String!
-  createdAt: Timestamp!
-  description: String
-  dueDate: Date
-  priority: String
-  completedAt: Timestamp
-}
-
-type ProjectMembership @table(key: ["user", "project"]) {
-  user: User!
-  project: Project!
-  role: String!
-  joinedAt: Timestamp!
-}
-
-type Notification @table {
-  user: User!
-  message: String!
-  type: String!
-  createdAt: Timestamp!
-  isRead: Boolean!
+  completed: Boolean! @default(value: false)
+  userId: String!
+  createdAt: Timestamp! @default(expr: "request.time")
 }

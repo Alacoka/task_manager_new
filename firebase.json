@@ -6,5 +6,13 @@
         "supportEmail": "support@undefined.firebaseapp.com"
       }
     }
+  },
+  "emulators": {
+    "dataconnect": {
+      "dataDir": "dataconnect/.dataconnect/pgliteData"
+    }
+  },
+  "dataconnect": {
+    "source": "dataconnect"
   }
 }
