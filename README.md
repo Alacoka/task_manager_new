@@ -1,8 +1,8 @@
-# TaskFlow 🚀
+# Task Manager
 
 O **TaskFlow** é um gestor de tarefas moderno e de alta performance, concebido para oferecer uma experiência de utilizador (UX) fluida e sem interrupções. O projeto foca-se em "Zero Latency UI", utilizando atualizações otimistas para que a interface reaja instantaneamente às ações do utilizador.
 
-![TaskFlow Preview](./task_manager_img.png) ## 🌟 Funcionalidades
+## 🌟 Funcionalidades
 
 - **Autenticação com Google:** Acesso rápido e seguro utilizando Firebase Authentication.
 - **Optimistic UI (Atualização Otimista):** As tarefas são adicionadas, editadas ou removidas visualmente antes mesmo da confirmação da base de dados, eliminando os tempos de espera.
