@@ -70,4 +70,4 @@ O **TaskFlow** é um gestor de tarefas moderno e de alta performance, concebido 
 Este projeto está sob a licença MIT. Veja o ficheiro [LICENSE](LICENSE) para mais detalhes.
 
 ---
-Desenvolvido com ☕ e TypeScript por [Kawã Gonçalves](https://linkedin.com/in/seu-perfil).
+Desenvolvido com ☕ e TypeScript por [Kawã Gonçalves](https://linkedin.com/in/kawaalacoque).
